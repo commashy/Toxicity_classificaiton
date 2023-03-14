@@ -30,7 +30,7 @@ def options():
     # data related
     parser.add_argument('--data_root', type=str, default='dataset')
     parser.add_argument('--dataset_name', type=str, default='tox_data_clean.csv')
-    parser.add_argument('--split', nargs='+', type=float, default=(8, 2))
+    parser.add_argument('--split', nargs='+', type=float, default=(8, 1, 1))
     parser.add_argument('--save_path', type=str, default='saved_models/model1.pth', help='path to save trained model')
     args = parser.parse_args()
 
@@ -49,20 +49,24 @@ def main():
     output_dim = args.output_dim
 
     # Load the data
-    X_train, X_test, y_train, y_test, X, y = preprocess(args.data_root, args.dataset_name, args.split)
+    X_train, X_val, X_test, y_train, y_val, y_test = preprocess(args.data_root, args.dataset_name, args.split)
 
     # Set up custom dataset and data loaders for training and testing sets
     train_set = CustomDataset(X_train, y_train, num_samples=X_train.shape[0], input_dim=X_train.shape[1], output_dim=output_dim)
-    val_set = CustomDataset(X_test, y_test, num_samples=X_test.shape[0], input_dim=X_test.shape[1], output_dim=output_dim)
+    val_set = CustomDataset(X_val, y_val, num_samples=X_val.shape[0], input_dim=X_val.shape[1], output_dim=output_dim)
+    test_set = CustomDataset(X_test, y_test, num_samples=X_test.shape[0], input_dim=X_test.shape[1], output_dim=output_dim)
     train_loader = DataLoader(dataset=train_set, batch_size=batch_size, shuffle=True)
     val_loader = DataLoader(dataset=val_set, batch_size=batch_size)
+    test_loader = DataLoader(dataset=test_set, batch_size=batch_size)
 
     # Initialize the neural network and the optimizer
     model = build_model(input_dim, output_dim)
     optimizer = optim.Adam(model.parameters(), lr=learning_rate)
 
-    # Define the loss function
-    criterion = nn.BCELoss()
+    # Train the neural network with early stopping
+    best_val_loss = float('inf')
+    best_model = None
+    patience = 20  # Number of epochs to wait before early stopping
 
     # Train the neural network
     for epoch in range(epochs):
@@ -73,7 +77,7 @@ def main():
         for x_batch, y_batch in tqdm(train_loader, desc=f"Epoch {epoch+1}/{epochs} - Training"):
             optimizer.zero_grad()
             y_pred = model(x_batch).flatten()
-            loss = criterion(y_pred, y_batch)
+            loss = model.loss_function(y_pred, y_batch)
             train_loss += loss.item()
             train_correct += ((y_pred > 0.5) == y_batch).sum().item()
             loss.backward()
@@ -86,7 +90,7 @@ def main():
         with torch.no_grad():
             for x_batch, y_batch in tqdm(val_loader, desc=f"Epoch {epoch+1}/{epochs} - Validation"):
                 y_pred = model(x_batch).flatten()
-                loss = criterion(y_pred, y_batch)
+                loss = model.loss_function(y_pred, y_batch)
                 val_loss += loss.item()
                 val_correct += ((y_pred > 0.5) == y_batch).sum().item()
 
@@ -98,19 +102,23 @@ def main():
         print("Epoch {}: Train Loss {:.4f}, Train Acc {:.2f}%, Val Loss {:.4f}, Val Acc {:.2f}%".format(
             epoch+1, train_loss, 100*train_acc, val_loss, 100*val_acc))
         
-        # Save the model every 10 epochs
-        if (epoch+1) % 10 == 0:
-            model_dir = os.path.join('saved_models', f"model_epoch{epoch+1}.pt")
-            torch.save(model.state_dict(), model_dir)
+        # Check if the validation loss has improved
+        if val_loss < best_val_loss:
+            best_val_loss = val_loss
+            best_model = model
+            patience_counter = 0
+        else:
+            patience_counter += 1
+            if patience_counter >= patience:
+                print("Early stopping after epoch {}.".format(epoch+1))
+                break
         
     # Save the final trained model
     model_dir = os.path.join('saved_models', f"model_final.pt")
-    torch.save(model.state_dict(), model_dir)
+    torch.save(best_model.state_dict(), model_dir)
         
-    evalu(X, y, model)
+    evalu(test_loader, test_set, best_model)
 
 
 if __name__ == '__main__':
     main()
-
-

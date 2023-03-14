@@ -11,18 +11,21 @@ def accuracy(y_pred, y):
     acc = torch.sum(y_pred==y).float()/len(y)
     return acc
 
-def evalu(X, y, model):
-    # set model to evaluation mode
-    model.eval()
-    with torch.no_grad():
-        # make predictions
-        y_pred_bin = (model(X).flatten()>0.5).float()
-        # calculate accuracy score
-        acc_score = accuracy(y_pred_bin, y).item()
-        # calculate F1 score
-        f1_score_val = f1_score(y_pred_bin, y).item()
+def evalu(test_loader, test_set, best_model):
 
-        # print scores with descriptions
-        print("Evaluation:")
-        print(f"Accuracy score: {acc_score:.4f}")
-        print(f"F1 score: {f1_score_val:.4f}")
+    # Evaluate the best model on the test set
+    best_model.eval()
+    test_loss = 0
+    test_correct = 0
+    with torch.no_grad():
+        for x_batch, y_batch in test_loader:
+            y_pred = best_model(x_batch).flatten()
+            loss = best_model.loss_function(y_pred, y_batch)
+            test_loss += loss.item()
+            test_correct += ((y_pred > 0.5) == y_batch).sum().item()
+
+    test_loss /= len(test_set)
+    test_acc = test_correct / len(test_set)
+    test_F1 = f1_score(y_pred, y_batch)
+    print("Test Loss {:.4f}, Test Acc {:.2f}%,".format(test_loss, 100*test_acc))
+    print("Test F1 {:.4f}".format(test_F1))

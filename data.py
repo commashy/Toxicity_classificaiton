@@ -24,7 +24,7 @@ class CustomDataset(Dataset):
     def __getitem__(self, idx):
         return self.X[idx], self.y[idx]
 
-def preprocess(data_root='dataset', dataset_name='tox_data_clean.csv', split=(8, 2)):
+def preprocess(data_root='dataset', dataset_name='tox_data_clean.csv', split=(8, 1, 1)):
     # Read the input CSV file
     df = pd.read_csv(os.path.join(data_root, dataset_name))
 
@@ -46,10 +46,11 @@ def preprocess(data_root='dataset', dataset_name='tox_data_clean.csv', split=(8,
     y = torch.tensor(list(df['NR.AhR']))
 
     # Split the data into training and testing sets
-    ratio = (split[1])/10
-    X_train, X_val, y_train, y_val = train_test_split(X, y, test_size=ratio)
-    # X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=ratio)
-    # X_val, X_test, y_val, y_test = train_test_split(X_test, y_test, test_size=0.5)
+    ratio = (split[1] + split[2])/10
+    ratio2 = split[2]/(split[1] + split[2])
+    # X_train, X_val, y_train, y_val = train_test_split(X, y, test_size=ratio)
+    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=ratio)
+    X_val, X_test, y_val, y_test = train_test_split(X_test, y_test, test_size=ratio2)
 
     # Create dataframes
     # train_df = pd.concat([X_train, y_train], axis=1)
@@ -60,7 +61,8 @@ def preprocess(data_root='dataset', dataset_name='tox_data_clean.csv', split=(8,
     # train_df.to_csv(os.path.join(data_root, f'train_{dataset_name}.csv'), index=False)
     # val_df.to_csv(os.path.join(data_root, f'val_{dataset_name}.csv'), index=False)
     # test_df.to_csv(os.path.join(data_root, f'test_{dataset_name}.csv'), index=False)
-    return X_train, X_val, y_train, y_val, X, y
+    # return X_train, X_val, y_train, y_val, X, y
+    return X_train, X_val, X_test, y_train, y_val, y_test
 
 # def main():
 #     # Set up argument parsers for data_root, dataset_name, and split
