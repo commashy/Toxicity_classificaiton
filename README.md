@@ -6,7 +6,7 @@ The model is a deep neural network built using PyTorch. It uses fully connected 
 
 ## **Usage**
 
-To train the model, simply run the **`train.py`** script with the appropriate arguments. The trained model will be saved in the **`models`** directory. To evaluate the model, run the **`evalu.py`** script with the appropriate arguments. The script will load the trained model and evaluate it on the test set, printing out various evaluation metrics.
+To train the model, simply run the **`train.py`** script with the appropriate arguments. The trained model will be saved in the **`saved_models`** directory. To evaluate the model, run the **`evalu.py`** script with the appropriate arguments. The script will load the trained model and evaluate it on the test set, printing out various evaluation metrics.
 
 ## **Requirements**
 
